@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class WeatherController {
@@ -8,7 +9,7 @@ class WeatherController {
     required double longitude,
   }) async {
     var uri = Uri.parse(
-      'https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=bf383e93db9499c1ffc5ea0be672482d&units=metric',
+      'https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=${dotenv.env['openweatherapi']}&units=metric',
     );
     http.Response response = await http.get(uri);
     print(response.body);
