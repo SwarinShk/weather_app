@@ -1,15 +1,65 @@
+import 'package:change_case/change_case.dart';
 import 'package:flutter/material.dart';
 import 'package:weather_app/constants/app_color.dart';
+import 'package:weather_app/controllers/city_controller.dart';
+import 'package:weather_app/controllers/weather_controller.dart';
 import 'package:weather_app/widgets/decorated_container.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final List<City> cityList;
+  final String cityName;
+  final String weatherDescription;
+  final String image;
+  final double temperature;
+  final double mintemperature;
+  final double maxtemperature;
+  final double windSpeed;
+  final int humidity;
+  final int pressure;
+
+  const HomePage({
+    required this.cityList,
+    required this.cityName,
+    required this.weatherDescription,
+    required this.image,
+    required this.temperature,
+    required this.mintemperature,
+    required this.maxtemperature,
+    required this.windSpeed,
+    required this.humidity,
+    required this.pressure,
+    super.key,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  late String cityName;
+  late String weatherDescription;
+  late String image;
+  late dynamic temperature;
+  late dynamic minTemperature;
+  late dynamic maxTemperature;
+  late dynamic windSpeed;
+  late int humidity;
+  late int pressure;
+
+  @override
+  void initState() {
+    super.initState();
+    cityName = widget.cityName;
+    weatherDescription = widget.weatherDescription;
+    image = widget.image;
+    temperature = widget.temperature;
+    minTemperature = widget.mintemperature;
+    maxTemperature = widget.maxtemperature;
+    windSpeed = widget.windSpeed;
+    humidity = widget.humidity;
+    pressure = widget.pressure;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,28 +69,90 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             spacing: 10,
             children: [
-              SearchBar(
-                elevation: WidgetStatePropertyAll(0),
-                shape: WidgetStatePropertyAll(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadiusGeometry.circular(10),
-                  ),
-                ),
-                hintText: 'London',
-                hintStyle: WidgetStatePropertyAll(
-                  TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    color: AppColor.greyColor,
-                  ),
-                ),
-                trailing: [
-                  DecoratedContainer(
-                    padding: EdgeInsetsGeometry.all(8),
-                    child: Icon(Icons.search, color: AppColor.textColor),
-                  ),
-                ],
+              SearchAnchor(
+                builder: (context, controller) {
+                  return SearchBar(
+                    controller: controller,
+                    elevation: const WidgetStatePropertyAll(0),
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    hintText: 'Search city',
+                    hintStyle: WidgetStatePropertyAll(
+                      TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: AppColor.greyColor,
+                      ),
+                    ),
+                    trailing: [
+                      DecoratedContainer(
+                        padding: const EdgeInsets.all(8),
+                        child: const Icon(Icons.search),
+                      ),
+                    ],
+                    onChanged: (_) => controller.openView(),
+                    onSubmitted: (value) async {
+                      var weatherData =
+                          await WeatherController.getWeatherDataFromCityName(
+                            cityName: value.trim(),
+                          );
+                      setState(() {
+                        cityName = weatherData['name'];
+                        weatherDescription =
+                            weatherData['weather'][0]['description'];
+                        image = weatherData['weather'][0]['icon'];
+                        temperature = weatherData['main']['temp'];
+                        minTemperature = weatherData['main']['temp_min'];
+                        maxTemperature = weatherData['main']['temp_max'];
+                        windSpeed = weatherData['wind']['speed'];
+                        humidity = weatherData['main']['humidity'];
+                        pressure = weatherData['main']['pressure'];
+                      });
+                      print('submitted');
+                    },
+                  );
+                },
+
+                suggestionsBuilder: (context, controller) {
+                  final query = controller.text.toLowerCase();
+
+                  final results = widget.cityList
+                      .where((city) => city.name.toLowerCase().contains(query))
+                      .take(10)
+                      .toList();
+
+                  return results.map((city) {
+                    return ListTile(
+                      title: Text(city.name),
+                      subtitle: Text(city.country),
+                      onTap: () async {
+                        controller.closeView(city.name);
+                        var weatherData =
+                            await WeatherController.getWeatherDataFromCityName(
+                              cityName: city.name,
+                            );
+                        setState(() {
+                          cityName = weatherData['name'];
+                          weatherDescription =
+                              weatherData['weather'][0]['description'];
+                          image = weatherData['weather'][0]['icon'];
+                          temperature = weatherData['main']['temp'];
+                          minTemperature = weatherData['main']['temp_min'];
+                          maxTemperature = weatherData['main']['temp_max'];
+                          windSpeed = weatherData['wind']['speed'];
+                          humidity = weatherData['main']['humidity'];
+                          pressure = weatherData['main']['pressure'];
+                        });
+                        print('sugesstion');
+                      },
+                    );
+                  });
+                },
               ),
+
               Expanded(
                 flex: 2,
                 child: Column(
@@ -48,7 +160,7 @@ class _HomePageState extends State<HomePage> {
                   spacing: 20,
                   children: [
                     Text(
-                      'London',
+                      cityName,
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w600,
@@ -56,7 +168,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     Text(
-                      'Cloudy',
+                      weatherDescription.toTitleCase(),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
@@ -66,14 +178,20 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              Expanded(flex: 5, child: Image.asset('assets/images/cloudy.png')),
+              Expanded(
+                flex: 5,
+                child: Image.network(
+                  'https://openweathermap.org/img/wn/$image@4x.png',
+                  scale: 0.6,
+                ),
+              ),
               DecoratedContainer(
                 width: double.infinity,
                 child: Row(
                   mainAxisAlignment: .spaceBetween,
                   children: [
                     Text(
-                      '50°',
+                      '${temperature.toStringAsFixed(1)}°',
                       style: TextStyle(
                         fontSize: 48,
                         fontWeight: FontWeight.w500,
@@ -88,10 +206,12 @@ class _HomePageState extends State<HomePage> {
                           fontWeight: FontWeight.w500,
                         ),
                         children: [
-                          TextSpan(text: '23°'),
+                          TextSpan(
+                            text: '${maxTemperature.toStringAsFixed(1)}°',
+                          ),
                           TextSpan(text: '  '),
                           TextSpan(
-                            text: '19°',
+                            text: '${minTemperature.toStringAsFixed(1)}°',
                             style: TextStyle(color: AppColor.greyColor),
                           ),
                         ],
@@ -110,7 +230,7 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           Icon(Icons.air, color: AppColor.greyColor),
                           Text(
-                            '06 km/h',
+                            '$windSpeed km/h',
                             style: TextStyle(
                               color: AppColor.textColor,
                               fontSize: 16,
@@ -128,7 +248,7 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           Icon(Icons.water_drop, color: AppColor.greyColor),
                           Text(
-                            '22%',
+                            '$humidity%',
                             style: TextStyle(
                               color: AppColor.textColor,
                               fontSize: 16,
@@ -144,9 +264,12 @@ class _HomePageState extends State<HomePage> {
                       child: Column(
                         spacing: 5,
                         children: [
-                          Icon(Icons.beach_access, color: AppColor.greyColor),
+                          Icon(
+                            Icons.device_thermostat,
+                            color: AppColor.greyColor,
+                          ),
                           Text(
-                            '11%',
+                            '$pressure hPa',
                             style: TextStyle(
                               color: AppColor.textColor,
                               fontSize: 16,
